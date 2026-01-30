@@ -6,6 +6,7 @@ import type {
   LanguageModelV1StreamPart,
 } from "@ai-sdk/provider";
 import type { GigaChatModel } from "./types.js";
+import { GigaChatAuth, type GigaChatScope } from "./auth.js";
 
 const DEFAULT_BASE_URL = "https://gigachat.devices.sberbank.ru/api/v1";
 
@@ -17,9 +18,21 @@ export interface GigaChatProviderSettings {
   baseURL?: string;
 
   /**
-   * GigaChat API key
+   * GigaChat credentials (Client ID:Client Secret or base64 encoded)
+   * Used for OAuth token exchange
    */
-  apiKey?: string;
+  credentials?: string;
+
+  /**
+   * Pre-obtained access token (if you handle OAuth yourself)
+   */
+  accessToken?: string;
+
+  /**
+   * API scope
+   * @default "GIGACHAT_API_PERS"
+   */
+  scope?: GigaChatScope;
 
   /**
    * Custom headers
@@ -55,6 +68,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
   readonly modelId: GigaChatModel;
   private readonly settings: GigaChatProviderSettings;
   private readonly modelSettings: GigaChatModelSettings;
+  private readonly auth: GigaChatAuth | null;
 
   constructor(
     modelId: GigaChatModel,
@@ -64,12 +78,32 @@ class GigaChatLanguageModel implements LanguageModelV1 {
     this.modelId = modelId;
     this.settings = settings;
     this.modelSettings = modelSettings;
+
+    // Initialize OAuth if credentials provided
+    if (settings.credentials) {
+      this.auth = new GigaChatAuth({
+        credentials: settings.credentials,
+        scope: settings.scope,
+      });
+    } else {
+      this.auth = null;
+    }
   }
 
-  private getHeaders(): Record<string, string> {
+  private async getHeaders(): Promise<Record<string, string>> {
+    let token: string;
+
+    if (this.auth) {
+      token = await this.auth.getToken();
+    } else if (this.settings.accessToken) {
+      token = this.settings.accessToken;
+    } else {
+      throw new Error("No credentials or access token provided");
+    }
+
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.settings.apiKey}`,
+      Authorization: `Bearer ${token}`,
       ...this.settings.headers,
     };
   }
@@ -83,7 +117,6 @@ class GigaChatLanguageModel implements LanguageModelV1 {
   ): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
 
-    // Add system message if present
     if (options.prompt) {
       for (const msg of options.prompt) {
         if (msg.role === "system") {
@@ -131,6 +164,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
     warnings?: LanguageModelV1CallWarning[];
   }> {
     const messages = this.convertMessages(options);
+    const headers = await this.getHeaders();
 
     const body = {
       model: this.modelId,
@@ -142,7 +176,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
 
     const response = await fetch(`${this.getBaseURL()}/chat/completions`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(body),
       signal: options.abortSignal,
     });
@@ -189,6 +223,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
     warnings?: LanguageModelV1CallWarning[];
   }> {
     const messages = this.convertMessages(options);
+    const headers = await this.getHeaders();
 
     const body = {
       model: this.modelId,
@@ -201,7 +236,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
 
     const response = await fetch(`${this.getBaseURL()}/chat/completions`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(body),
       signal: options.abortSignal,
     });
@@ -336,8 +371,9 @@ export function createGigaChat(settings: GigaChatProviderSettings = {}) {
 
 /**
  * Default GigaChat provider instance
- * Uses GIGACHAT_API_KEY environment variable
+ * Uses GIGACHAT_CREDENTIALS environment variable for OAuth
  */
 export const gigachat = createGigaChat({
-  apiKey: process.env.GIGACHAT_API_KEY,
+  credentials: process.env.GIGACHAT_CREDENTIALS || process.env.GIGACHAT_API_KEY,
+  scope: (process.env.GIGACHAT_SCOPE as GigaChatScope) || "GIGACHAT_API_PERS",
 });

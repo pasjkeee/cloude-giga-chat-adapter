@@ -26,42 +26,66 @@ Then import directly from the file system:
 import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.js";
 ```
 
-## Usage
+## GigaChat Authentication
 
-### As an OpenCode Provider
+**Important:** GigaChat uses OAuth 2.0 authentication, not simple API keys. You need:
 
-**Using local adapter (recommended):**
+1. **Client credentials** from [developers.sber.ru](https://developers.sber.ru)
+2. Format: `ClientID:ClientSecret` (will be base64 encoded automatically)
+3. Access tokens expire after **30 minutes** (auto-refreshed by this adapter)
 
-First build the adapter, then add to your `opencode.json`:
+### Environment Variables
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "gigachat": {
-      "npm": "/home/user/cloude-giga-chat-adapter",
-      "name": "GigaChat",
-      "options": {
-        "apiKey": "{env:GIGACHAT_API_KEY}"
-      },
-      "models": {
-        "GigaChat-2": {
-          "name": "GigaChat-2 (Light)"
-        },
-        "GigaChat-2-Max": {
-          "name": "GigaChat-2 Max"
-        },
-        "GigaChat-2-Plus": {
-          "name": "GigaChat-2 Plus"
-        }
-      }
-    }
-  },
-  "model": "gigachat/GigaChat-2"
-}
+```bash
+# Your GigaChat credentials (ClientID:ClientSecret)
+export GIGACHAT_CREDENTIALS="your_client_id:your_client_secret"
+
+# Optional: API scope (default: GIGACHAT_API_PERS)
+# - GIGACHAT_API_PERS - for individuals
+# - GIGACHAT_API_B2B - for business (paid packages)
+# - GIGACHAT_API_CORP - for business (pay-as-you-go)
+export GIGACHAT_SCOPE="GIGACHAT_API_PERS"
 ```
 
-**Using openai-compatible (alternative):**
+## Usage
+
+### Programmatic Usage (Recommended)
+
+Since OpenCode doesn't support local providers, use the adapter directly:
+
+```typescript
+import { createGigaChat } from "opencode-giga-chat-adapter";
+
+const gigachat = createGigaChat({
+  credentials: process.env.GIGACHAT_CREDENTIALS,
+  scope: "GIGACHAT_API_PERS",
+});
+
+const model = gigachat("GigaChat-2");
+```
+
+### With AI SDK
+
+```typescript
+import { generateText } from "ai";
+import { createGigaChat } from "opencode-giga-chat-adapter";
+
+const gigachat = createGigaChat({
+  credentials: process.env.GIGACHAT_CREDENTIALS,
+});
+
+const { text } = await generateText({
+  model: gigachat("GigaChat-2"),
+  prompt: "Hello!",
+});
+```
+
+### OpenCode Configuration (Limited)
+
+> **Note:** OpenCode currently doesn't support local file providers or OAuth.
+> The `@ai-sdk/openai-compatible` won't work because GigaChat uses OAuth, not API keys.
+
+If you have a pre-obtained access token, you can try:
 
 ```json
 {
@@ -72,7 +96,7 @@ First build the adapter, then add to your `opencode.json`:
       "name": "GigaChat",
       "options": {
         "baseURL": "https://gigachat.devices.sberbank.ru/api/v1",
-        "apiKey": "{env:GIGACHAT_API_KEY}"
+        "apiKey": "{env:GIGACHAT_ACCESS_TOKEN}"
       },
       "models": {
         "GigaChat-2": { "name": "GigaChat-2 (Light)" }
@@ -83,19 +107,7 @@ First build the adapter, then add to your `opencode.json`:
 }
 ```
 
-You can select a different model:
-
-```json
-{
-  "model": "gigachat/GigaChat-2-Max"
-}
-```
-
-Or use the `-m` flag:
-
-```bash
-opencode -m gigachat/GigaChat-2-Max
-```
+But the token expires in 30 minutes!
 
 ### Programmatic Usage
 

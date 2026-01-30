@@ -15,6 +15,9 @@ export {
 // Standalone adapter
 export { GigaChatAdapter } from "./adapter.js";
 
+// Authentication
+export { GigaChatAuth, type GigaChatAuthConfig, type GigaChatScope } from "./auth.js";
+
 // Types
 export type {
   GigaChatConfig,
