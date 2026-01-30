@@ -28,17 +28,19 @@ import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.j
 
 ## GigaChat Authentication
 
-**Important:** GigaChat uses OAuth 2.0 authentication, not simple API keys. You need:
-
-1. **Client credentials** from [developers.sber.ru](https://developers.sber.ru)
-2. Format: `ClientID:ClientSecret` (will be base64 encoded automatically)
-3. Access tokens expire after **30 minutes** (auto-refreshed by this adapter)
+**Important:** GigaChat uses OAuth 2.0 authentication. You need credentials from [developers.sber.ru](https://developers.sber.ru).
 
 ### Environment Variables
 
 ```bash
-# Your GigaChat credentials (ClientID:ClientSecret)
+# Use your Authorization Key (already base64 encoded from Sber portal)
+export GIGACHAT_CREDENTIALS="your_authorization_key"
+
+# OR use ClientID:ClientSecret format (will be auto-encoded)
 export GIGACHAT_CREDENTIALS="your_client_id:your_client_secret"
+
+# Skip SSL verification for Russian certificates
+export GIGACHAT_VERIFY_SSL=false
 
 # Optional: API scope (default: GIGACHAT_API_PERS)
 # - GIGACHAT_API_PERS - for individuals
@@ -46,6 +48,8 @@ export GIGACHAT_CREDENTIALS="your_client_id:your_client_secret"
 # - GIGACHAT_API_CORP - for business (pay-as-you-go)
 export GIGACHAT_SCOPE="GIGACHAT_API_PERS"
 ```
+
+Access tokens expire after **30 minutes** (auto-refreshed by this adapter).
 
 ## Usage
 

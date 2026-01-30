@@ -8,7 +8,7 @@
  *   npm run build
  *
  * Environment variables:
- *   GIGACHAT_CREDENTIALS - Your ClientID:ClientSecret
+ *   GIGACHAT_CREDENTIALS - Your Authorization Key (from Sber portal)
  *   GIGACHAT_VERIFY_SSL  - Set to "false" to skip SSL verification
  */
 
