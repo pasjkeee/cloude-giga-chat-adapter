@@ -30,7 +30,7 @@ import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.j
 
 ### As an OpenCode Plugin
 
-Add to your `opencode.json`:
+**From npm:**
 
 ```json
 {
@@ -41,6 +41,41 @@ Add to your `opencode.json`:
         "gigachat": {
           "apiKey": "${GIGACHAT_API_KEY}",
           "model": "GigaChat-2-Max"
+        }
+      }
+    }
+  ]
+}
+```
+
+**From local file system:**
+
+```json
+{
+  "plugins": [
+    {
+      "name": "./path/to/cloude-giga-chat-adapter/dist/index.js",
+      "config": {
+        "gigachat": {
+          "apiKey": "${GIGACHAT_API_KEY}",
+          "model": "GigaChat-2"
+        }
+      }
+    }
+  ]
+}
+```
+
+Or with absolute path:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "/home/user/cloude-giga-chat-adapter/dist/index.js",
+      "config": {
+        "gigachat": {
+          "apiKey": "${GIGACHAT_API_KEY}"
         }
       }
     }
