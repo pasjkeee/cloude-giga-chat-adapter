@@ -30,7 +30,38 @@ import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.j
 
 ### As an OpenCode Provider
 
-Add GigaChat as a custom provider in your `opencode.json`:
+**Using local adapter (recommended):**
+
+First build the adapter, then add to your `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "gigachat": {
+      "npm": "/home/user/cloude-giga-chat-adapter",
+      "name": "GigaChat",
+      "options": {
+        "apiKey": "{env:GIGACHAT_API_KEY}"
+      },
+      "models": {
+        "GigaChat-2": {
+          "name": "GigaChat-2 (Light)"
+        },
+        "GigaChat-2-Max": {
+          "name": "GigaChat-2 Max"
+        },
+        "GigaChat-2-Plus": {
+          "name": "GigaChat-2 Plus"
+        }
+      }
+    }
+  },
+  "model": "gigachat/GigaChat-2"
+}
+```
+
+**Using openai-compatible (alternative):**
 
 ```json
 {
@@ -44,15 +75,7 @@ Add GigaChat as a custom provider in your `opencode.json`:
         "apiKey": "{env:GIGACHAT_API_KEY}"
       },
       "models": {
-        "GigaChat-2": {
-          "name": "GigaChat-2 (Light)"
-        },
-        "GigaChat-2-Max": {
-          "name": "GigaChat-2 Max"
-        },
-        "GigaChat-2-Plus": {
-          "name": "GigaChat-2 Plus"
-        }
+        "GigaChat-2": { "name": "GigaChat-2 (Light)" }
       }
     }
   },

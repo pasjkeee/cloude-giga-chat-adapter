@@ -38,6 +38,7 @@
     "@typescript-eslint/parser": "^6.19.0"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.1.0"
+    "@ai-sdk/provider": "^1.0.0",
+    "@ai-sdk/provider-utils": "^2.0.0"
   }
 }
