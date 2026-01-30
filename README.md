@@ -8,6 +8,24 @@ An OpenCode plugin/adapter for integrating with GigaChat API.
 npm install opencode-giga-chat-adapter
 ```
 
+### Local Development (without npm install)
+
+Clone and build the adapter locally:
+
+```bash
+git clone <repo-url>
+cd cloude-giga-chat-adapter
+npm install
+npm run build
+```
+
+Then import directly from the file system:
+
+```typescript
+// From your project
+import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.js";
+```
+
 ## Usage
 
 ### As an OpenCode Plugin
@@ -90,6 +108,21 @@ When used as an OpenCode plugin, the following tools are available:
 - **gigachat_chat** - Send a message to GigaChat
 - **gigachat_models** - List available models
 - **gigachat_configure** - Update adapter configuration
+
+## Examples
+
+Run examples from the local file system:
+
+```bash
+# Build first
+npm run build
+
+# Simple example (JavaScript)
+GIGACHAT_API_KEY=your_key node examples/simple.mjs
+
+# Full example with TypeScript (requires tsx)
+GIGACHAT_API_KEY=your_key npx tsx examples/local-usage.ts
+```
 
 ## Development
 
