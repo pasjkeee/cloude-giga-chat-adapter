@@ -1,29 +1,47 @@
 /**
- * Simple example: Using the adapter from local file system
+ * Simple example: Using the GigaChat provider
  *
  * Run with:
  *   node examples/simple.mjs
  *
  * Make sure to build first:
  *   npm run build
+ *
+ * Environment variables:
+ *   GIGACHAT_CREDENTIALS - Your ClientID:ClientSecret
+ *   GIGACHAT_VERIFY_SSL  - Set to "false" to skip SSL verification
  */
 
-import { GigaChatAdapter } from "../dist/index.js";
+import { createGigaChat } from "../dist/index.js";
 
-const apiKey = process.env.GIGACHAT_API_KEY;
+const credentials = process.env.GIGACHAT_CREDENTIALS;
 
-if (!apiKey) {
-  console.error("Set GIGACHAT_API_KEY environment variable");
+if (!credentials) {
+  console.error("Set GIGACHAT_CREDENTIALS environment variable (ClientID:ClientSecret)");
   process.exit(1);
 }
 
-const adapter = new GigaChatAdapter({
-  apiKey,
-  model: "GigaChat-2", // light version (default)
+// Create provider with OAuth
+const gigachat = createGigaChat({
+  credentials,
+  verifySslCerts: process.env.GIGACHAT_VERIFY_SSL !== "false",
 });
 
-const response = await adapter.chat([
-  { role: "user", content: "Hello!" },
-]);
+// Get model
+const model = gigachat("GigaChat-2");
 
-console.log(response.choices[0].message.content);
+console.log("Provider:", model.provider);
+console.log("Model:", model.modelId);
+console.log("\nSending request...\n");
+
+// Use doGenerate directly
+const result = await model.doGenerate({
+  inputFormat: "messages",
+  mode: { type: "regular" },
+  prompt: [
+    { role: "user", content: [{ type: "text", text: "Hello! What model are you?" }] },
+  ],
+});
+
+console.log("Response:", result.text);
+console.log("Usage:", result.usage);
