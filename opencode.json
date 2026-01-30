@@ -2,9 +2,10 @@
   "$schema": "https://opencode.ai/config.json",
   "provider": {
     "gigachat": {
-      "npm": "/home/user/cloude-giga-chat-adapter",
+      "npm": "@ai-sdk/openai-compatible",
       "name": "GigaChat",
       "options": {
+        "baseURL": "https://gigachat.devices.sberbank.ru/api/v1",
         "apiKey": "{env:GIGACHAT_API_KEY}"
       },
       "models": {
