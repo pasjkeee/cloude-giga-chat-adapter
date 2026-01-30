@@ -3,7 +3,13 @@
  *
  * GigaChat uses OAuth 2.0 with access tokens that expire after 30 minutes.
  * This module handles token acquisition and automatic refresh.
+ *
+ * Note: GigaChat uses Russian certificates. You may need to:
+ * 1. Set NODE_TLS_REJECT_UNAUTHORIZED=0 (for testing only!)
+ * 2. Or download Russian Root CA from gosuslugi.ru
  */
+
+import https from "node:https";
 
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
@@ -29,9 +35,10 @@ export interface GigaChatAuthConfig {
 
   /**
    * Skip SSL certificate verification (for Russian certificates)
+   * WARNING: Only use for testing!
    * @default false
    */
-  insecure?: boolean;
+  verifySslCerts?: boolean;
 }
 
 interface TokenResponse {
@@ -44,14 +51,14 @@ interface TokenResponse {
  * Handles OAuth token acquisition and automatic refresh
  */
 export class GigaChatAuth {
-  private config: GigaChatAuthConfig;
+  private config: Required<GigaChatAuthConfig>;
   private accessToken: string | null = null;
   private expiresAt: number = 0;
 
   constructor(config: GigaChatAuthConfig) {
     this.config = {
       scope: "GIGACHAT_API_PERS",
-      insecure: false,
+      verifySslCerts: true,
       ...config,
     };
   }
@@ -76,46 +83,83 @@ export class GigaChatAuth {
   }
 
   /**
-   * Refresh the access token
+   * Refresh the access token using https module (for SSL control)
    */
   private async refreshToken(): Promise<void> {
     const credentials = this.encodeCredentials(this.config.credentials);
+    const body = `scope=${this.config.scope}`;
 
-    const response = await fetch(OAUTH_URL, {
+    const data = await this.makeRequest(OAUTH_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
         Authorization: `Basic ${credentials}`,
         RqUID: this.generateRqUID(),
+        "Content-Length": Buffer.byteLength(body).toString(),
       },
-      body: `scope=${this.config.scope}`,
+      body,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`GigaChat OAuth error: ${response.status} - ${error}`);
-    }
+    const tokenData = JSON.parse(data) as TokenResponse;
 
-    const data = (await response.json()) as TokenResponse;
-
-    this.accessToken = data.access_token;
-    // Use expires_at from response or calculate from now
-    this.expiresAt = data.expires_at
-      ? data.expires_at * 1000 // Convert to milliseconds
+    this.accessToken = tokenData.access_token;
+    this.expiresAt = tokenData.expires_at
+      ? tokenData.expires_at * 1000
       : Date.now() + TOKEN_LIFETIME_MS;
+  }
+
+  /**
+   * Make HTTPS request with SSL certificate control
+   */
+  private makeRequest(
+    url: string,
+    options: { method: string; headers: Record<string, string>; body?: string }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+
+      const req = https.request(
+        {
+          hostname: urlObj.hostname,
+          port: urlObj.port || 443,
+          path: urlObj.pathname,
+          method: options.method,
+          headers: options.headers,
+          rejectUnauthorized: this.config.verifySslCerts,
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(data);
+            } else {
+              reject(new Error(`GigaChat OAuth error: ${res.statusCode} - ${data}`));
+            }
+          });
+        }
+      );
+
+      req.on("error", (err) => {
+        reject(new Error(`GigaChat OAuth request failed: ${err.message}`));
+      });
+
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
+    });
   }
 
   /**
    * Encode credentials to base64 if not already encoded
    */
   private encodeCredentials(credentials: string): string {
-    // Check if already base64 encoded (no colons, valid base64 chars)
     if (/^[A-Za-z0-9+/=]+$/.test(credentials) && !credentials.includes(":")) {
       return credentials;
     }
-
-    // Encode Client ID:Client Secret to base64
     return Buffer.from(credentials).toString("base64");
   }
 
@@ -156,9 +200,11 @@ export function createAuthFromEnv(): GigaChatAuth {
   }
 
   const scope = (process.env.GIGACHAT_SCOPE as GigaChatScope) || "GIGACHAT_API_PERS";
+  const verifySsl = process.env.GIGACHAT_VERIFY_SSL !== "false";
 
   return new GigaChatAuth({
     credentials,
     scope,
+    verifySslCerts: verifySsl,
   });
 }

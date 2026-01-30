@@ -5,6 +5,7 @@ import type {
   LanguageModelV1FinishReason,
   LanguageModelV1StreamPart,
 } from "@ai-sdk/provider";
+import https from "node:https";
 import type { GigaChatModel } from "./types.js";
 import { GigaChatAuth, type GigaChatScope } from "./auth.js";
 
@@ -33,6 +34,13 @@ export interface GigaChatProviderSettings {
    * @default "GIGACHAT_API_PERS"
    */
   scope?: GigaChatScope;
+
+  /**
+   * Verify SSL certificates
+   * Set to false for Russian certificates (testing only!)
+   * @default true
+   */
+  verifySslCerts?: boolean;
 
   /**
    * Custom headers
@@ -69,6 +77,7 @@ class GigaChatLanguageModel implements LanguageModelV1 {
   private readonly settings: GigaChatProviderSettings;
   private readonly modelSettings: GigaChatModelSettings;
   private readonly auth: GigaChatAuth | null;
+  private readonly verifySsl: boolean;
 
   constructor(
     modelId: GigaChatModel,
@@ -78,12 +87,14 @@ class GigaChatLanguageModel implements LanguageModelV1 {
     this.modelId = modelId;
     this.settings = settings;
     this.modelSettings = modelSettings;
+    this.verifySsl = settings.verifySslCerts ?? true;
 
     // Initialize OAuth if credentials provided
     if (settings.credentials) {
       this.auth = new GigaChatAuth({
         credentials: settings.credentials,
         scope: settings.scope,
+        verifySslCerts: this.verifySsl,
       });
     } else {
       this.auth = null;
@@ -110,6 +121,54 @@ class GigaChatLanguageModel implements LanguageModelV1 {
 
   private getBaseURL(): string {
     return this.settings.baseURL ?? DEFAULT_BASE_URL;
+  }
+
+  /**
+   * Make HTTPS request with SSL certificate control
+   */
+  private makeRequest(
+    url: string,
+    options: {
+      method: string;
+      headers: Record<string, string>;
+      body?: string;
+    }
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+
+      const req = https.request(
+        {
+          hostname: urlObj.hostname,
+          port: urlObj.port || 443,
+          path: urlObj.pathname + urlObj.search,
+          method: options.method,
+          headers: options.headers,
+          rejectUnauthorized: this.verifySsl,
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+              resolve(data);
+            } else {
+              reject(new Error(`GigaChat API error: ${res.statusCode} - ${data}`));
+            }
+          });
+        }
+      );
+
+      req.on("error", (err) => {
+        reject(new Error(`GigaChat API request failed: ${err.message}`));
+      });
+
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
+    });
   }
 
   private convertMessages(
@@ -174,19 +233,17 @@ class GigaChatLanguageModel implements LanguageModelV1 {
       top_p: options.topP ?? this.modelSettings.topP,
     };
 
-    const response = await fetch(`${this.getBaseURL()}/chat/completions`, {
+    const bodyStr = JSON.stringify(body);
+    const response = await this.makeRequest(`${this.getBaseURL()}/chat/completions`, {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
+      headers: {
+        ...headers,
+        "Content-Length": Buffer.byteLength(bodyStr).toString(),
+      },
+      body: bodyStr,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`GigaChat API error: ${response.status} - ${error}`);
-    }
-
-    const data = (await response.json()) as {
+    const data = JSON.parse(response) as {
       choices: Array<{
         message: { role: string; content: string };
         finish_reason: string;
@@ -234,19 +291,15 @@ class GigaChatLanguageModel implements LanguageModelV1 {
       stream: true,
     };
 
-    const response = await fetch(`${this.getBaseURL()}/chat/completions`, {
+    const bodyStr = JSON.stringify(body);
+    const stream = await this.makeStreamRequest(`${this.getBaseURL()}/chat/completions`, {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      signal: options.abortSignal,
+      headers: {
+        ...headers,
+        "Content-Length": Buffer.byteLength(bodyStr).toString(),
+      },
+      body: bodyStr,
     });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`GigaChat API error: ${response.status} - ${error}`);
-    }
-
-    const stream = this.createStream(response);
 
     return {
       stream,
@@ -257,80 +310,121 @@ class GigaChatLanguageModel implements LanguageModelV1 {
     };
   }
 
-  private createStream(
-    response: Response
-  ): ReadableStream<LanguageModelV1StreamPart> {
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("Response body is null");
+  /**
+   * Make streaming HTTPS request
+   */
+  private makeStreamRequest(
+    url: string,
+    options: {
+      method: string;
+      headers: Record<string, string>;
+      body?: string;
     }
+  ): Promise<ReadableStream<LanguageModelV1StreamPart>> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
 
-    const decoder = new TextDecoder();
-    let buffer = "";
+      const req = https.request(
+        {
+          hostname: urlObj.hostname,
+          port: urlObj.port || 443,
+          path: urlObj.pathname + urlObj.search,
+          method: options.method,
+          headers: options.headers,
+          rejectUnauthorized: this.verifySsl,
+        },
+        (res) => {
+          if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
+            let data = "";
+            res.on("data", (chunk) => (data += chunk));
+            res.on("end", () => {
+              reject(new Error(`GigaChat API error: ${res.statusCode} - ${data}`));
+            });
+            return;
+          }
 
-    return new ReadableStream<LanguageModelV1StreamPart>({
-      pull: async (controller) => {
-        const { done, value } = await reader.read();
+          let buffer = "";
+          const stream = new ReadableStream<LanguageModelV1StreamPart>({
+            start: (controller) => {
+              res.on("data", (chunk: Buffer) => {
+                buffer += chunk.toString();
+                const lines = buffer.split("\n");
+                buffer = lines.pop() ?? "";
 
-        if (done) {
-          controller.enqueue({
-            type: "finish",
-            finishReason: "stop",
-            usage: { promptTokens: 0, completionTokens: 0 },
-          });
-          controller.close();
-          return;
-        }
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (trimmed.startsWith("data: ")) {
+                    const data = trimmed.slice(6);
+                    if (data === "[DONE]") {
+                      controller.enqueue({
+                        type: "finish",
+                        finishReason: "stop",
+                        usage: { promptTokens: 0, completionTokens: 0 },
+                      });
+                      controller.close();
+                      return;
+                    }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+                    try {
+                      const parsed = JSON.parse(data) as {
+                        choices: Array<{
+                          delta: { content?: string };
+                          finish_reason?: string;
+                        }>;
+                      };
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith("data: ")) {
-            const data = trimmed.slice(6);
-            if (data === "[DONE]") {
-              controller.enqueue({
-                type: "finish",
-                finishReason: "stop",
-                usage: { promptTokens: 0, completionTokens: 0 },
+                      const delta = parsed.choices[0]?.delta;
+                      if (delta?.content) {
+                        controller.enqueue({
+                          type: "text-delta",
+                          textDelta: delta.content,
+                        });
+                      }
+
+                      if (parsed.choices[0]?.finish_reason) {
+                        controller.enqueue({
+                          type: "finish",
+                          finishReason: this.mapFinishReason(
+                            parsed.choices[0].finish_reason
+                          ),
+                          usage: { promptTokens: 0, completionTokens: 0 },
+                        });
+                      }
+                    } catch {
+                      // Skip invalid JSON
+                    }
+                  }
+                }
               });
-              controller.close();
-              return;
-            }
 
-            try {
-              const parsed = JSON.parse(data) as {
-                choices: Array<{
-                  delta: { content?: string };
-                  finish_reason?: string;
-                }>;
-              };
-
-              const delta = parsed.choices[0]?.delta;
-              if (delta?.content) {
-                controller.enqueue({
-                  type: "text-delta",
-                  textDelta: delta.content,
-                });
-              }
-
-              if (parsed.choices[0]?.finish_reason) {
+              res.on("end", () => {
                 controller.enqueue({
                   type: "finish",
-                  finishReason: this.mapFinishReason(
-                    parsed.choices[0].finish_reason
-                  ),
+                  finishReason: "stop",
                   usage: { promptTokens: 0, completionTokens: 0 },
                 });
-              }
-            } catch {
-              // Skip invalid JSON
-            }
-          }
+                controller.close();
+              });
+
+              res.on("error", (err) => {
+                controller.error(err);
+              });
+            },
+          });
+
+          resolve(stream);
         }
-      },
+      );
+
+      req.on("error", (err) => {
+        reject(new Error(`GigaChat API request failed: ${err.message}`));
+      });
+
+      if (options.body) {
+        req.write(options.body);
+      }
+
+      req.end();
     });
   }
 
@@ -372,8 +466,10 @@ export function createGigaChat(settings: GigaChatProviderSettings = {}) {
 /**
  * Default GigaChat provider instance
  * Uses GIGACHAT_CREDENTIALS environment variable for OAuth
+ * Set GIGACHAT_VERIFY_SSL=false to skip SSL verification
  */
 export const gigachat = createGigaChat({
   credentials: process.env.GIGACHAT_CREDENTIALS || process.env.GIGACHAT_API_KEY,
   scope: (process.env.GIGACHAT_SCOPE as GigaChatScope) || "GIGACHAT_API_PERS",
+  verifySslCerts: process.env.GIGACHAT_VERIFY_SSL !== "false",
 });
