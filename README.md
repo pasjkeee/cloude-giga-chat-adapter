@@ -28,59 +28,50 @@ import { GigaChatAdapter } from "./path/to/cloude-giga-chat-adapter/dist/index.j
 
 ## Usage
 
-### As an OpenCode Plugin
+### As an OpenCode Provider
 
-**From npm:**
+Add GigaChat as a custom provider in your `opencode.json`:
 
 ```json
 {
-  "plugins": [
-    {
-      "name": "opencode-giga-chat-adapter",
-      "config": {
-        "gigachat": {
-          "apiKey": "${GIGACHAT_API_KEY}",
-          "model": "GigaChat-2-Max"
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "gigachat": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "GigaChat",
+      "options": {
+        "baseURL": "https://gigachat.devices.sberbank.ru/api/v1",
+        "apiKey": "{env:GIGACHAT_API_KEY}"
+      },
+      "models": {
+        "GigaChat-2": {
+          "name": "GigaChat-2 (Light)"
+        },
+        "GigaChat-2-Max": {
+          "name": "GigaChat-2 Max"
+        },
+        "GigaChat-2-Plus": {
+          "name": "GigaChat-2 Plus"
         }
       }
     }
-  ]
+  },
+  "model": "gigachat/GigaChat-2"
 }
 ```
 
-**From local file system:**
+You can select a different model:
 
 ```json
 {
-  "plugins": [
-    {
-      "name": "./path/to/cloude-giga-chat-adapter/dist/index.js",
-      "config": {
-        "gigachat": {
-          "apiKey": "${GIGACHAT_API_KEY}",
-          "model": "GigaChat-2"
-        }
-      }
-    }
-  ]
+  "model": "gigachat/GigaChat-2-Max"
 }
 ```
 
-Or with absolute path:
+Or use the `-m` flag:
 
-```json
-{
-  "plugins": [
-    {
-      "name": "/home/user/cloude-giga-chat-adapter/dist/index.js",
-      "config": {
-        "gigachat": {
-          "apiKey": "${GIGACHAT_API_KEY}"
-        }
-      }
-    }
-  ]
-}
+```bash
+opencode -m gigachat/GigaChat-2-Max
 ```
 
 ### Programmatic Usage
@@ -119,22 +110,20 @@ for await (const chunk of adapter.chatStream([
 ### Quick Start
 
 ```bash
-# 1. Build the adapter
-cd /home/user/cloude-giga-chat-adapter
-npm install
-npm run build
+# 1. Copy opencode.json to your project (or use the one in this repo)
+cp /home/user/cloude-giga-chat-adapter/opencode.json ./
 
 # 2. Set your API key
 export GIGACHAT_API_KEY=your_api_key_here
 
-# 3. Run opencode from the adapter directory (auto-detects opencode.json)
+# 3. Run opencode (auto-detects opencode.json)
 opencode
 ```
 
 ### Using in Any Project
 
 1. Copy `opencode.json` to your project directory
-2. Update the plugin path in `opencode.json` to point to the built adapter
+2. Set the `GIGACHAT_API_KEY` environment variable
 3. Run opencode:
 
 ```bash
@@ -142,13 +131,14 @@ export GIGACHAT_API_KEY=your_key
 opencode
 ```
 
-OpenCode automatically detects `opencode.json` in the current directory.
-
-### Run from a Specific Directory
+### Select Model via CLI
 
 ```bash
-# Pass the project path as argument
-opencode /path/to/your/project
+# Use GigaChat-2-Max model
+opencode -m gigachat/GigaChat-2-Max
+
+# Use GigaChat-2 (default light model)
+opencode -m gigachat/GigaChat-2
 ```
 
 ## Configuration

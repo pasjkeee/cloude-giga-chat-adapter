@@ -1,14 +1,34 @@
 {
-  "$schema": "https://opencode.ai/config.schema.json",
-  "plugins": [
-    {
-      "name": "/home/user/cloude-giga-chat-adapter/dist/index.js",
-      "config": {
-        "gigachat": {
-          "apiKey": "${GIGACHAT_API_KEY}",
-          "model": "GigaChat-2"
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "gigachat": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "GigaChat",
+      "options": {
+        "baseURL": "https://gigachat.devices.sberbank.ru/api/v1",
+        "apiKey": "{env:GIGACHAT_API_KEY}"
+      },
+      "models": {
+        "GigaChat-2": {
+          "name": "GigaChat-2 (Light)"
+        },
+        "GigaChat-2-Max": {
+          "name": "GigaChat-2 Max"
+        },
+        "GigaChat-2-Plus": {
+          "name": "GigaChat-2 Plus"
+        },
+        "GigaChat": {
+          "name": "GigaChat (Legacy)"
+        },
+        "GigaChat-Plus": {
+          "name": "GigaChat Plus (Legacy)"
+        },
+        "GigaChat-Pro": {
+          "name": "GigaChat Pro (Legacy)"
         }
       }
     }
-  ]
+  },
+  "model": "gigachat/GigaChat-2"
 }
