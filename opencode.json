@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.schema.json",
+  "plugins": [
+    {
+      "name": "/home/user/cloude-giga-chat-adapter/dist/index.js",
+      "config": {
+        "gigachat": {
+          "apiKey": "${GIGACHAT_API_KEY}",
+          "model": "GigaChat-2"
+        }
+      }
+    }
+  ]
+}

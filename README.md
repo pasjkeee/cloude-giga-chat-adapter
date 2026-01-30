@@ -114,6 +114,47 @@ for await (const chunk of adapter.chatStream([
 }
 ```
 
+## Running with OpenCode
+
+### Quick Start
+
+```bash
+# 1. Build the adapter
+cd /home/user/cloude-giga-chat-adapter
+npm install
+npm run build
+
+# 2. Set your API key
+export GIGACHAT_API_KEY=your_api_key_here
+
+# 3. Run opencode with the config
+opencode --config /home/user/cloude-giga-chat-adapter/opencode.json
+```
+
+### Using in Any Project
+
+Copy `opencode.json` to your project directory and run:
+
+```bash
+# From your project directory
+export GIGACHAT_API_KEY=your_key
+opencode
+```
+
+OpenCode will automatically detect `opencode.json` in the current directory.
+
+### Specify Config File Explicitly
+
+```bash
+opencode --config ./path/to/opencode.json
+```
+
+Or use the `-c` shorthand:
+
+```bash
+opencode -c ./opencode.json
+```
+
 ## Configuration
 
 | Option | Type | Default | Description |
