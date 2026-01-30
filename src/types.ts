@@ -1,4 +1,16 @@
 /**
+ * Available GigaChat models
+ */
+export type GigaChatModel =
+  | "GigaChat-2"
+  | "GigaChat-2-Max"
+  | "GigaChat-2-Plus"
+  | "GigaChat"
+  | "GigaChat-Plus"
+  | "GigaChat-Pro"
+  | (string & {});
+
+/**
  * Configuration for GigaChat adapter
  */
 export interface GigaChatConfig {
@@ -6,8 +18,17 @@ export interface GigaChatConfig {
   baseUrl?: string;
   /** API key for authentication */
   apiKey: string;
-  /** Model to use (e.g., "GigaChat", "GigaChat-Plus", "GigaChat-Pro") */
-  model?: string;
+  /**
+   * Model to use. Default: "GigaChat-2" (light version)
+   * Available models:
+   * - "GigaChat-2" - Light, fast model (default)
+   * - "GigaChat-2-Max" - Most capable model
+   * - "GigaChat-2-Plus" - Balanced performance
+   * - "GigaChat" - Legacy light model
+   * - "GigaChat-Plus" - Legacy balanced model
+   * - "GigaChat-Pro" - Legacy pro model
+   */
+  model?: GigaChatModel;
   /** Request timeout in milliseconds */
   timeout?: number;
   /** Maximum tokens in response */

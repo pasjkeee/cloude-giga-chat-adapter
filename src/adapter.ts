@@ -6,7 +6,7 @@ import type {
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://gigachat.devices.sberbank.ru/api/v1";
-const DEFAULT_MODEL = "GigaChat";
+const DEFAULT_MODEL = "GigaChat-2";
 const DEFAULT_TIMEOUT = 30000;
 
 /**

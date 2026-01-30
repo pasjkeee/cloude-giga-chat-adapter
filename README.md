@@ -22,7 +22,7 @@ Add to your `opencode.json`:
       "config": {
         "gigachat": {
           "apiKey": "${GIGACHAT_API_KEY}",
-          "model": "GigaChat-Pro"
+          "model": "GigaChat-2-Max"
         }
       }
     }
@@ -35,9 +35,15 @@ Add to your `opencode.json`:
 ```typescript
 import { GigaChatAdapter } from "opencode-giga-chat-adapter";
 
+// Uses GigaChat-2 (light) by default
 const adapter = new GigaChatAdapter({
   apiKey: process.env.GIGACHAT_API_KEY!,
-  model: "GigaChat-Pro",
+});
+
+// Or specify a different model
+const adapterMax = new GigaChatAdapter({
+  apiKey: process.env.GIGACHAT_API_KEY!,
+  model: "GigaChat-2-Max",
 });
 
 // Send a chat message
@@ -61,10 +67,21 @@ for await (const chunk of adapter.chatStream([
 |--------|------|---------|-------------|
 | `apiKey` | string | required | GigaChat API key |
 | `baseUrl` | string | `https://gigachat.devices.sberbank.ru/api/v1` | API endpoint |
-| `model` | string | `GigaChat` | Model name |
+| `model` | string | `GigaChat-2` | Model name (see below) |
 | `timeout` | number | `30000` | Request timeout (ms) |
 | `maxTokens` | number | `4096` | Max tokens in response |
 | `temperature` | number | `0.7` | Temperature (0-2) |
+
+### Available Models
+
+| Model | Description |
+|-------|-------------|
+| `GigaChat-2` | Light, fast model (default) |
+| `GigaChat-2-Max` | Most capable model |
+| `GigaChat-2-Plus` | Balanced performance |
+| `GigaChat` | Legacy light model |
+| `GigaChat-Plus` | Legacy balanced model |
+| `GigaChat-Pro` | Legacy pro model |
 
 ## Available Tools
 
