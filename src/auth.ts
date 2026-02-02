@@ -10,6 +10,7 @@
  */
 
 import https from "node:https";
+import crypto from "node:crypto";
 
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const TOKEN_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
