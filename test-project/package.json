@@ -1,0 +1,12 @@
+{
+  "name": "test-project",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "opencode": "node run-opencode.mjs",
+    "opencode:direct": "npx opencode"
+  },
+  "dependencies": {
+    "opencode-ai": "latest"
+  }
+}
